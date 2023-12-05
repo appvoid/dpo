@@ -10,7 +10,7 @@ from utils import find_all_linear_names, print_trainable_parameters
 output_dir="./palmer-003"
 model_name = "appvoid/palmer-002"
 
-dataset = load_dataset("json", data_files="dpo_orca.json",split="train")
+dataset = load_dataset("json", data_files="dpo_orca_small.json",split="train")
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
