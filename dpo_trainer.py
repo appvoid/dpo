@@ -7,15 +7,15 @@ from trl import DPOTrainer
 from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model
 from utils import find_all_linear_names, print_trainable_parameters
 
-output_dir="./dpo_results"
-model_name = "merged_peft/final_merged_checkpoint"
+output_dir="./palmer-003"
+model_name = "appvoid/palmer-002"
 
-dataset = load_dataset("json", data_files="dpo_conversations.json",split="train")
+dataset = load_dataset("json", data_files="dpo_orca.json",split="train")
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_compute_dtype=torch.float16,
 )
 
 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, quantization_config=bnb_config)
@@ -30,7 +30,7 @@ tokenizer.pad_token = tokenizer.eos_token
 def return_prompt_and_responses(samples):
     return {
         "prompt": [
-            f"An AI tool that corrects and rephrase user text grammar errors delimited by triple backticks to standard English.\n### Input: ```{input}```\n ### Output: "
+            f"{input}"
             for input in samples["input"]
         ],
         "chosen": samples["chosen"],
@@ -46,16 +46,16 @@ dataset = dataset.map(
 )
 
 training_args = TrainingArguments(
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
-    gradient_checkpointing =True,
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=1,
+    gradient_checkpointing =False,
     max_grad_norm= 0.3,
-    num_train_epochs=15, 
-    save_steps= 100,
-    learning_rate=2e-4,
-    bf16=True,
-    save_total_limit=3,
-    logging_steps=10,
+    num_train_epochs=15,
+    save_steps= 0,
+    learning_rate=1e-5,
+    bf16=False,
+    save_total_limit=0,
+    logging_steps=100,
     output_dir=output_dir,
     optim="paged_adamw_32bit",
     lr_scheduler_type="cosine",
@@ -64,8 +64,8 @@ training_args = TrainingArguments(
 )
 
 peft_config = LoraConfig(
-    r=32,
-    lora_alpha=16,
+    r=128,
+    lora_alpha=256,
     target_modules=find_all_linear_names(model),
     lora_dropout=0.05,
     bias="none",
@@ -82,7 +82,7 @@ dpo_trainer = DPOTrainer(
     train_dataset=dataset,
     tokenizer=tokenizer,
     max_prompt_length=1024,
-    max_length=2048,
+    max_length=4096,
 )
 
 
